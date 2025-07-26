@@ -22,7 +22,7 @@
 #pragma comment(lib, "netapi32.lib")
 
 // 闲置时间阈值（分钟），可根据需要修改
-const int kIdleTimeoutMinutes = 10;
+const int kIdleTimeoutMinutes = 5;
 
 // 获取当前时间的字符串表示
 std::string GetCurrentTimeString() {
@@ -253,6 +253,7 @@ int WINAPI WinMain(HINSTANCE h_instance, HINSTANCE h_prev_instance,
     LPSTR lp_cmd_line, int n_cmd_show) {
     WriteLog("程序启动");
     
+    /*
     // 获取当前程序路径并设置自启动
     TCHAR app_path[MAX_PATH];
     if (GetModuleFileName(nullptr, app_path, MAX_PATH)) {
@@ -264,7 +265,7 @@ int WINAPI WinMain(HINSTANCE h_instance, HINSTANCE h_prev_instance,
     else {
         WriteLog("获取程序路径失败");
     }
-    
+    */
     // 启动监控线程
     std::thread monitor_thread(MonitorAndDisconnect);
     monitor_thread.detach();
