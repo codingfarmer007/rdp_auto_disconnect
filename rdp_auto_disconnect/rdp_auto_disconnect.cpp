@@ -102,8 +102,8 @@ bool SetAutoStart(const TCHAR* app_path) {
 }
 
 // 检查是否有活跃的RDP会话
-// 返回值：存在活跃RDP会话返回true，否则返回false
-bool CheckActiveRdpSession() {
+// 返回值：活跃RDP会话数量
+int CheckActiveRdpSession() {
     PWTS_SESSION_INFO session_info = nullptr;
     DWORD session_count = 0;
 
@@ -113,7 +113,7 @@ bool CheckActiveRdpSession() {
         return false;
     }
 
-    bool has_active_rdp = false;
+    int active_rdp_count = 0;
 
     // 检查每个会话是否是RDP会话且活跃
     for (DWORD i = 0; i < session_count; ++i) {
@@ -130,7 +130,7 @@ bool CheckActiveRdpSession() {
 
                 // RDP会话的名称通常是"RDP-Tcp#xxx"
                 if (_tcsstr(info->WinStationName, _T("RDP-Tcp")) != nullptr) {
-                    has_active_rdp = true;
+                    active_rdp_count++;
 
                     DWORD idle_time_100ns = info->CurrentTime.QuadPart - info->LastInputTime.QuadPart;
                     DWORD idle_time_minutes = idle_time_100ns / (1000 * 60 * 10000);
@@ -163,20 +163,17 @@ bool CheckActiveRdpSession() {
                 }
 
                 WTSFreeMemory(info);
-                if (has_active_rdp) {
-                    break;
-                }
             }
         }
     }
 
     WTSFreeMemory(session_info);
 
-    if (!has_active_rdp) {
+    if (!active_rdp_count) {
         WriteLog("未检测到活跃的RDP会话");
     }
 
-    return has_active_rdp;
+    return active_rdp_count;
 }
 
 // 主监控函数，循环检查RDP连接和用户活动
