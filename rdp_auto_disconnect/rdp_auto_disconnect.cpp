@@ -103,7 +103,7 @@ bool SetAutoStart(const TCHAR* app_path) {
 
 // 检查是否有活跃的RDP会话
 // 返回值：存在活跃RDP会话返回true，否则返回false
-bool HasActiveRdpSession() {
+bool CheckActiveRdpSession() {
     PWTS_SESSION_INFO session_info = nullptr;
     DWORD session_count = 0;
 
@@ -122,23 +122,47 @@ bool HasActiveRdpSession() {
         // 检查会话状态是否为活跃
         if (session.State == WTSActive) {
             // 获取会话类型
-            LPTSTR session_name = nullptr;
+            PWTSINFO info;
             DWORD bytes_returned = 0;
 
             if (WTSQuerySessionInformation(WTS_CURRENT_SERVER_HANDLE, session.SessionId,
-                WTSWinStationName, &session_name, &bytes_returned)) {
+                WTSSessionInfo, (LPTSTR*)&info, &bytes_returned)) {
 
                 // RDP会话的名称通常是"RDP-Tcp#xxx"
-                if (_tcsstr(session_name, _T("RDP-Tcp")) != nullptr) {
+                if (_tcsstr(info->WinStationName, _T("RDP-Tcp")) != nullptr) {
                     has_active_rdp = true;
+
+                    DWORD idle_time_100ns = info->CurrentTime.QuadPart - info->LastInputTime.QuadPart;
+                    DWORD idle_time_minutes = idle_time_100ns / (1000 * 60 * 10000);
 
                     // 将会话ID转换为字符串写入日志
                     std::stringstream ss;
-                    ss << "检测到活跃的RDP会话，会话ID: " << session.SessionId;
+                    ss << "检测到活跃的RDP会话，会话ID: " << session.SessionId
+                        << "，最后一次活跃时间：" << info->LastInputTime.QuadPart << "，当前用户闲置时间: " << idle_time_minutes << "分钟";
                     WriteLog(ss.str());
+
+                    // 如果闲置时间超过阈值，断开连接
+                    if (idle_time_minutes >= kIdleTimeoutMinutes) {
+                        std::stringstream ss;
+                        ss << "闲置时间(" << idle_time_minutes << "分钟)超过阈值("
+                            << kIdleTimeoutMinutes << "分钟)，准备断开RDP连接";
+                        WriteLog(ss.str());
+
+                        // 断开RDP会话
+                        if (WTSDisconnectSession(WTS_CURRENT_SERVER_HANDLE, session.SessionId, TRUE)) {
+                            std::stringstream ss;
+                            ss << "已断开RDP会话，会话ID: " << session.SessionId;
+                            WriteLog(ss.str());
+                        }
+                        else {
+                            std::stringstream ss;
+                            ss << "断开RDP会话失败，会话ID: " << session.SessionId;
+                            WriteLog(ss.str());
+                        }
+                    }
                 }
 
-                WTSFreeMemory(session_name);
+                WTSFreeMemory(info);
                 if (has_active_rdp) {
                     break;
                 }
@@ -155,67 +179,6 @@ bool HasActiveRdpSession() {
     return has_active_rdp;
 }
 
-// 获取最后一次输入到现在的时间（毫秒）
-// 返回值：闲置时间（毫秒）
-DWORD GetLastInputTime() {
-    LASTINPUTINFO last_input_info;
-    last_input_info.cbSize = sizeof(LASTINPUTINFO);
-
-    if (GetLastInputInfo(&last_input_info)) {
-        DWORD idle_time_ms = GetTickCount() - last_input_info.dwTime;
-        DWORD idle_time_minutes = idle_time_ms / (1000 * 60);
-
-        std::stringstream ss;
-        ss << "当前用户闲置时间: " << idle_time_minutes << "分钟";
-        WriteLog(ss.str());
-
-        return idle_time_ms;
-    }
-
-    WriteLog("获取用户输入时间失败");
-    return 0;
-}
-
-// 断开所有RDP会话
-void DisconnectRdpSessions() {
-    PWTS_SESSION_INFO session_info = nullptr;
-    DWORD session_count = 0;
-
-    if (!WTSEnumerateSessions(WTS_CURRENT_SERVER_HANDLE, 0, 1, &session_info, &session_count)) {
-        WriteLog("枚举会话失败，无法断开RDP连接");
-        return;
-    }
-
-    for (DWORD i = 0; i < session_count; ++i) {
-        WTS_SESSION_INFO session = session_info[i];
-
-        LPTSTR session_name = nullptr;
-        DWORD bytes_returned = 0;
-
-        if (WTSQuerySessionInformation(WTS_CURRENT_SERVER_HANDLE, session.SessionId,
-            WTSWinStationName, &session_name, &bytes_returned)) {
-
-            if (_tcsstr(session_name, _T("RDP-Tcp")) != nullptr) {
-                // 断开RDP会话
-                if (WTSDisconnectSession(WTS_CURRENT_SERVER_HANDLE, session.SessionId, TRUE)) {
-                    std::stringstream ss;
-                    ss << "已断开RDP会话，会话ID: " << session.SessionId;
-                    WriteLog(ss.str());
-                }
-                else {
-                    std::stringstream ss;
-                    ss << "断开RDP会话失败，会话ID: " << session.SessionId;
-                    WriteLog(ss.str());
-                }
-            }
-
-            WTSFreeMemory(session_name);
-        }
-    }
-
-    WTSFreeMemory(session_info);
-}
-
 // 主监控函数，循环检查RDP连接和用户活动
 void MonitorAndDisconnect() {
     WriteLog("监控线程已启动");
@@ -223,24 +186,7 @@ void MonitorAndDisconnect() {
     while (true) {
         WriteLog("开始新一轮检查...");
 
-        // 检查是否有活跃的RDP会话
-        if (HasActiveRdpSession()) {
-            // 获取最后一次输入到现在的毫秒数
-            DWORD idle_time_ms = GetLastInputTime();
-            DWORD idle_time_minutes = idle_time_ms / (1000 * 60);
-
-            // 如果闲置时间超过阈值，断开连接
-            if (idle_time_minutes >= kIdleTimeoutMinutes) {
-                std::stringstream ss;
-                ss << "闲置时间(" << idle_time_minutes << "分钟)超过阈值("
-                    << kIdleTimeoutMinutes << "分钟)，准备断开RDP连接";
-                WriteLog(ss.str());
-
-                DisconnectRdpSessions();
-                // 断开后稍等片刻再继续监控
-                std::this_thread::sleep_for(std::chrono::minutes(1));
-            }
-        }
+        CheckActiveRdpSession();
 
         WriteLog("本轮检查结束，等待下一次检查...");
         // 每分钟检查一次
