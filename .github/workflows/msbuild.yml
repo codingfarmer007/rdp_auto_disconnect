@@ -62,7 +62,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
-        release_name: rdp-auto-disconnect-${{ github.ref }}
+        release_name: rdp-auto-disconnect-v1.0.0
     
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1
@@ -70,6 +70,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./github-pages.zip
-        asset_name: rdp-auto-disconnect-${{ github.ref }}.zip
-        asset_content_type: application/zip
+        asset_path: D:\a\_temp/artifact.tar
+        asset_name: D:\a\_temp/artifact.tar
+        asset_content_type: application/tar
