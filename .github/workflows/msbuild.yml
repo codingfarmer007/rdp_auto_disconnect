@@ -48,4 +48,4 @@ jobs:
       uses: actions/upload-pages-artifact@v3
       with:
         path:
-          rdp_auto_disconnect\x64\Release\
+          ${{env.GITHUB_WORKSPACE}}\rdp_auto_disconnect\x64\Release\*
