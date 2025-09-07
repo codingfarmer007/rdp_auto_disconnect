@@ -47,10 +47,8 @@ jobs:
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
 
     - name: Release
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path:
-          .\x64\Release\
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: zip -r $RUNNER_TEMP\artifact.zip .\x64\Release\
     
     - name: Create Release
       id: create_release
@@ -67,6 +65,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: D:\a\_temp/artifact.tar
-        asset_name: D:\a\_temp/artifact.tar
-        asset_content_type: application/tar
+        asset_path: $RUNNER_TEMP\artifact.zip
+        asset_name: rdp-auto-disconnect-v1.0.0.zip
+        asset_content_type: application/zip
