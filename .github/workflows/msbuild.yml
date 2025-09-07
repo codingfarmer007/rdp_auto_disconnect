@@ -47,5 +47,9 @@ jobs:
     - name: Release
       uses: actions/upload-pages-artifact@v3
       with:
+        name: rdp-auto-disconnect-v1.0.0
         path:
           .\x64\Release\
+
+    - name: Deploy
+      uses: actions/deploy-pages@v4
