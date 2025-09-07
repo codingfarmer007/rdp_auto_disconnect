@@ -55,3 +55,5 @@ jobs:
     
     - name: Deploy
       uses: actions/deploy-pages@v4
+      with:
+        artifact_name: rdp-auto-disconnect-v1.0.0
