@@ -48,6 +48,4 @@ jobs:
       uses: actions/upload-pages-artifact@v3
       with:
         path:
-          rdp_auto_disconnect\rdp_auto_disconnect\x64\Release\rdp_auto_disconnect.exe
-          rdp_auto_disconnect\rdp_auto_disconnect\x64\Release\rdp_auto_disconnect.map
-          rdp_auto_disconnect\rdp_auto_disconnect\x64\Release\rdp_auto_disconnect.pdb
+          rdp_auto_disconnect\rdp_auto_disconnect\x64\Release\
