@@ -29,6 +29,9 @@ permissions:
 jobs:
   build:
     runs-on: windows-2022
+    environment:
+      name: rdp-auto-disconnect-v1.0.0
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
     - uses: actions/checkout@v4
