@@ -23,6 +23,8 @@ env:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 jobs:
   build:
@@ -50,14 +52,6 @@ jobs:
         name: rdp-auto-disconnect-v1.0.0
         path:
           .\x64\Release\
-
-  deploy:
-      environment:
-        name: rdp-auto-disconnect-v1.0.0
-        url: ${{ steps.deployment.outputs.page_url }}
-      runs-on: windows-2022
-      needs: build
-      steps:
-        - name: Deploy to GitHub Pages
-          id: deployment
-          uses: actions/deploy-pages@v4
+    
+    - name: Deploy
+      uses: actions/deploy-pages@v4
